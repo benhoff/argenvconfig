@@ -1,23 +1,19 @@
-import argparse
-import ConfigParser
-import os
-from gettext import gettext as _
+# command line, env, config, default
+class ArgEnvConfig:
+    """
+    Interface class which presents a unified API to user
+    """
+    def __init__(self):
+        pass
 
-def _identity(x):
-    return x
+    def add_argument(self, *args, **kwargs):
+        pass
 
-_SENTINEL = object()
-_CONFIG_MISSING_OPT_ERRORS = (ConfigParser.NoSectionError,
-                              ConfigParser.NoOptionError)
+    def parser_args(self, *args, **kwargs):
+        pass
 
-class AddConfigFile(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        # I can never remember if `values` is a list all the time or if it
-        # can be a scalar string; this takes care of both.
-        if isinstance(values,basestring):
-            parser.config_files.append(values)
-        else:
-            parser.config_files.extend(values)
+    def parse_known_args(self, args=None, namespace=None):
+        pass
 
 
 class ArgumentConfigEnvParser(argparse.ArgumentParser):
@@ -33,47 +29,6 @@ class ArgumentConfigEnvParser(argparse.ArgumentParser):
         self._action_defaults = {}
         super(ArgumentConfigEnvParser, self).__init__(*args, **kwargs)
 
-
-    def add_argument(self, *args, **kwargs):
-        """
-        Works like `ArgumentParser.add_argument`, except that we've added an action:
-
-           config: add a config file to the parser
-
-        This also adds the ability to specify which section of the config file to pull the
-        data from, via the `section` keyword.  This relies on the (undocumented) fact that
-        `ArgumentParser.add_argument` actually returns the `Action` object that it creates.
-        We need this to reliably get `dest` (although we could probably write a simple
-        function to do this for us).
-        """
-
-        if 'action' in kwargs and kwargs['action'] == 'config':
-            kwargs['action'] = AddConfigFile
-            kwargs['default'] = argparse.SUPPRESS
-
-        # argparse won't know what to do with the section, so
-        # we'll pop it out and add it back in later.
-        #
-        # We also have to prevent argparse from doing any type conversion,
-        # which is done explicitly in parse_known_args.
-        #
-        # This way, we can reliably check whether argparse has replaced the
-        # default.
-        #
-        section = kwargs.pop('section', self.default_section)
-        type = kwargs.pop('type', _identity)
-        default = kwargs.pop('default', _SENTINEL)
-
-        if default is not argparse.SUPPRESS:
-            kwargs.update(default=_SENTINEL)
-        else:
-            kwargs.update(default=argparse.SUPPRESS)
-
-        action = super(ArgumentConfigEnvParser, self).add_argument(
-            *args, **kwargs)
-        kwargs.update(section=section, type=type, default=default)
-        self._action_defaults[action.dest] = (args, kwargs)
-        return action
 
     def parse_known_args(self, args=None, namespace=None):
         ns, argv = super(ArgumentConfigEnvParser, self).parse_known_args(
